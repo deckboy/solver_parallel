@@ -1,0 +1,172 @@
+<Test_1> ... Gas flow in a reservoir
+>>>MEMORY_ALLOCATION
+&Basic_Parameter_Definitions    EOS_Name                        = 'GAS_EOS',
+                                number_of_components            = 1,
+                                number_of_equations             = 1,
+                                Flag_binary_diffusion           = .FALSE.
+                                /
+&System_Specifications          coordinate_system               = 'Cartesian',
+                                Max_number_of_elements          = 130000,
+                                Max_number_of_connections       = 320000,
+                                Max_number_of_sources_and_sinks = 2,
+                                Max_number_of_geologic_media    = 4
+                                /
+<<<End of MEMORY_ALLOCATION
+!
+!
+!
+>>>GAS_EOS
+&Gas_EOS_Specific_Data          gas_name                        = 'CH4', 
+                                gas_reference_density           = 0.68,                                             ! [kg/m^3]
+                                gas_compressibility             = 0.998,                                            ! Z factor [-]
+                                gas_reference_viscosity         = 1.027e-5,                                         ! [Pa.s]
+                                VisCoeffNumber                  = 8,
+                                viscosity_coefficients          = 2.4504e-3, 2.8764e-5, 3.279e-9, -3.7838e-12, 2.0891e-5, 2.5127e-7, -5.822e-10, 1.8378e-13, ! mu(cp), T(K), rho(kg/m^3)
+                                gas_reference_thermal_cond      = .03281,
+                                ThermCondCoeffNumber            = 3,
+                                ThermCond_coefficients          = -0.00935, 1.4028e-4, 3.3180e-8,                                   ! lambda(W/m.K), T(K)
+                                Cp_coefficients                 = 4.568e+00, -8.9750e-03, 3.631000e-05, -3.4070e-08, 1.091e-11,     ! J/mol.K
+                                TCrit                           = 1.9056d+02,
+                                PCrit                           = 4.600155d+06,
+                                VCrit                           = 9.9000d-02,
+                                ZCrit                           = 2.880d-01,
+                                Omega                           = 1.1000d-02,
+                                MolWeight                       = 1.604300d-02
+                                /
+<<<End of GAS_EOS
+!
+!
+!
+>>>ROCKS
+DIRT1
+&Media_Properties               grain_density                   = 2.6E3,                        ! The PF medium grain density, [kg/m^3]
+                                porosity                        = 1.0E-1,                       ! The PF medium porosity
+                                permeability                    = 1.0E-19, 1.0E-19, 1.0E-19,    ! Intrinsic permeabilities along principal axes [m^2];  array dimension = 3                              ! Absolute perms along three principal axes
+                                sat_therm_conductivity          = 3.1d0,                        ! Formation heat conductivity under fully liquid-saturated conditions, [W/m/degC]
+                                specific_heat                   = 1000.0d0,                     ! The PF medium specific heat, [J/kg/degC]
+                                compressibility                 = 1.0E-9                        ! The pore compressibility, [1/Pa]
+                                /
+WELL1
+&Media_Properties               grain_density                   = 2.6E3,                        ! The PF medium grain density, [kg/m^3]
+                                porosity                        = 1.0E-1,                       ! The PF medium porosity
+                                permeability                    = 1.0E-14, 1.0E-14, 1.0E-14,    ! Intrinsic permeabilities along principal axes [m^2];  array dimension = 3                              ! Absolute perms along three principal axes
+                                sat_therm_conductivity          = 3.1d0,                        ! Formation heat conductivity under fully liquid-saturated conditions, [W/m/degC]
+                                specific_heat                   = 1000.0d0,                     ! The PF medium specific heat, [J/kg/degC]
+                                compressibility                 = 1.0E-9                        ! The pore compressibility, [1/Pa]
+                                /
+FRAC1
+&Media_Properties               grain_density                   = 2.6E3,                        ! The PF medium grain density, [kg/m^3]
+                                porosity                        = 1.0E-1,                       ! The PF medium porosity
+                                permeability                    = 1.0E-15, 1.0E-15, 1.0E-15,    ! Intrinsic permeabilities along principal axes [m^2];  array dimension = 3                              ! Absolute perms along three principal axes
+                                sat_therm_conductivity          = 3.1d0,                        ! Formation heat conductivity under fully liquid-saturated conditions, [W/m/degC]
+                                specific_heat                   = 1000.0d0,                     ! The PF medium specific heat, [J/kg/degC]
+                                compressibility                 = 1.0E-9                        ! The pore compressibility, [1/Pa]
+                                /
+BOUND
+&Media_Properties               grain_density                   = 2.6E3,                        ! The PF medium grain density, [kg/m^3]
+                                porosity                        = 0.0E0,                        ! The PF medium porosity
+                                permeability                    = 0.0E-13, 0.0E-13, 0.0E-13,    ! Intrinsic permeabilities along principal axes [m^2];  array dimension = 3                              ! Absolute perms along three principal axes
+                                sat_therm_conductivity          = 1.0E2,                        ! Formation heat conductivity under fully liquid-saturated conditions, [W/m/degC]
+                                specific_heat                   = 1000.0d0,                     ! The PF medium specific heat, [J/kg/degC]
+                                compressibility                 = 1.0E-9                        ! The pore compressibility, [1/Pa]
+                                /
+<<<End of Rock Properties
+!
+!
+!
+>>>TIME_DISCRETIZATION_DATA
+&Time_Discretization_Data       max_number_of_timesteps         = 5000,      ! Maximum number of time steps
+                                time_at_simulation_beginning    = 0.0d0,     ! Time at the beginning of the simulation
+                                time_at_simulation_end          = 6.3072E+7, ! Time at the end of the simulation
+                                initial_timestep                = 1.0e0,     ! Initial time step size (sec)
+                                maximum_timestep                = 6.3072E+7, ! Maximum time step size (sec)
+                                Dt_reduction_factor             = 2.0,       ! Reduction factor for cutting Dt
+                                units_of_time                   = 'sec',     ! = <min>, <hrs>, or <days>; Default is <sec>
+                                num_of_user_defined_timesteps   = 0          ! Number of the user-specified timesteps
+                                /
+<<<End of TIME_DISCRETIZATION_DATA
+!
+!
+!
+>>>SOLVER
+&Solver_Specifications          MatrixSolver                    = 3,        !!MatrixSolver = 1 for direct,  2 for DSLUBC, 3 for DBLUS
+                                Max_CGIterationRatio            = 1.0d-1,   !
+                                CG_convergence_crit             = 1.0d-8    !
+                                /
+<<<
+!
+!
+!
+>>>NRI_DATA
+&NR_Iteration_Data              Max_number_of_NR_iterations     = 8,      ! Maximum number of Newtonian iterations
+                                criterion_for_Dt_doubling       = 4,      ! If NR convergence attained in fewer iterations than this number, then Dt is doubled on the next timestep
+                                relative_convergence_criterion  = 1.0E-5, ! Convergence criterion #1 for relative error of Newtonian iterations
+                                absolute_convergence_criterion  = 1.0E0,  ! Convergence criterion #2 for absolute error of Newtonian iterations
+                                NR_solution_weighing_factor     = 1       ! Weighing factor of most recent Newton-Raphson solution in updating primary variables
+                                /
+<<<End of NRI_DATA
+!
+!
+!
+>>>OUTPUT_OPTIONS
+&Output_Options                 Option_amount_of_output         = 3,        ! Option determining the amount of output
+                                Option_format_of_output         = 'BOTH',   ! = Determining the format of the output (standard FTSim, plotting-package, or both)
+                                Option_Print_NRIterationInfo    = 1,        ! = MOP( 1): Determining the printout amount after each NR iteration
+                                Option_Print_CyclingInfo        = 0,        ! = MOP( 2): Determining the printout amount in the simulation cycling subroutine
+                                Option_Print_JacobianInfo       = 0,        ! = MOP( 3): Determining the printout amount in the subroutine setting up the Jacobian
+                                Option_Print_SourceSinkInfo     = 0,        ! = MOP( 4): Determining the printout amount in the source/sink subroutine
+                                Option_Print_EOSInfo            = 1,        ! = MOP( 5): Determining the printout amount in the equation-of-state subroutine
+                                Option_Print_SolverInfo         = 0,        ! = MOP( 6): Determining the printout amount in the linear equation solvers
+                                Flag_print_input_data           = .FALSE.,  ! = MOP( 7): Flag determining whether the inputs will be printed in the output file
+                                PRINT_frequency                 = 5000,        ! Print-outs every <output_frequency> time steps
+                                frequency_of_storing_SAVE_file  = 10,      ! Frequency of storing the SAVE file
+                                name_of_tracked_element         = 0,        ! Name of tracked element
+                                number_specified_output_times   = 3         ! Number of provided print-out times (NumPrintTimes<=100)
+                                /  
+&Specified_Output_Times         units_of_time                   = 'sec', ! = <min>, <hrs>, or <days>; Default is <sec>
+                                PrintTime                       = 8.64E+5, 8.64E+6, 3.1536E+7       ! Listing of the user-specified print times
+                                /
+<<<End of Output_Options
+!
+!
+!
+>>>COMPUTATIONAL_PARAMETERS
+&Computational_Parameters       upstream_weighting_factor       = 1,       ! Upstream weighting factor
+                                implicitness_weighting_factor   = 1,       ! Weighting factor determining the level of implicitness
+                                derivative_increment            = 1.E-8    ! Increment for estimation of numerical derivative
+                                acceleration_of_gravity         = 9.806,   ! Acceleration of gravity
+                                Option_thermal_conductivity     = 0,       ! Option describing the method for computing the thermal cond. of composite systems
+                                Option_upstream_weighting       = 0,       ! Option describing the method of upstream weighting of mobilities and permeabilities
+                                Option_interface_density        = 0,       ! Option describing the method of estimation of the interface density
+                                Flag_check_initial_conditions   = .FALSE.  ! Flag for checking the accuracy/correctness/feasibility of assigned initial conditions
+                                /
+<<<End of COMPUTATIONAL_PARAMETERS
+!
+!
+!
+>>>INITIAL_CONDITIONS
+&Uniform_Initial_Conditions     state                           = 'Gas',       ! Uniform initial thermodynamic state
+                                primary_variable_names          = 'P,T',       ! Definition of properties/conditions used as primary variables
+                                primary_variable_values         = 3.0e7,30.e0  ! Values of the initial uniform primary variable values
+                                /
+:::>>>                                                                                          !Element-specific Initial Conditions
+'10000'
+&InCond                         state                           = 'Gas',                        ! Element initial thermodynamic state (= phase coexistence) 
+                                PVList                          = 'P,T',                        ! Definition of the properties/conditions used as primary variables
+                                PV                              = 1.0E7, 30.0E0,                ! Values of the initial primary variable values in this element
+                                phi                             = 2.0d-1,                       ! Element initial uniform porosity
+                                perm                            = 1.0E-12, 1.0E-12, 1.0E-12     ! Element initial uniform permeabilities
+                                /
+:::<<
+<<<End of INITIAL_CONDITIONS
+
+GENER----1----*----2----*----3----*----4----*----5----*----6----*----7----*----8
+
+!A0000Pro01                         COM1    -2.0e-1
+
+ENDCY----1----*----2----*----3----*----4----*----5----*----6----*----7----*----8
+
+Q0000Pro01                         COM1    -1.0e-1
+Q0000Pro02                         HEAT     2.0e2
+
+MESHMAKER1----*----2----*----3----*----4----*----5----*----6----*----7----*----8

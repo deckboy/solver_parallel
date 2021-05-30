@@ -1,0 +1,18 @@
+#BSUB -n 16 -R 'rusage[mem=1000] span[ptile=16]' -M 1000
+#BSUB -J res_sim -o res_sim.%J -L /bin/bash -W 20
+#
+module load intel
+
+cd ../
+make clean
+make
+cd FracGrid
+
+export OMP_NUM_THREADS=1; ./../FTSim.exe < Test_B2 > 1.out
+export OMP_NUM_THREADS=2; ./../FTSim.exe < Test_B2 > 2.out
+export OMP_NUM_THREADS=4; ./../FTSim.exe < Test_B2 > 4.out
+export OMP_NUM_THREADS=8; ./../FTSim.exe < Test_B2 > 8.out
+#export OMP_NUM_THREADS=16; ./FTSim.exe < Test_B2 >16.out
+
+
+
