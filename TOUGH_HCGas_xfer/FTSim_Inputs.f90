@@ -462,7 +462,7 @@
       INTEGER :: n
 !
 #ifdef USE_TIMER
-         real :: start, finish
+         real(KIND = 8) :: start, finish
 #endif
 !
 !  =>=>=>=>=>=>=>=>=>=>=>=>=>=>=>=>=>=>=>   Main body of Read_Main_Input_File
@@ -519,31 +519,30 @@
 ! ----------
 !
 #ifdef USE_TIMER
-         call cpu_time(start)
+            call CPU_Timing_Routine(start)
 #endif
 
 #ifdef USE_OMP
-!$OMP WORKSHARE
+!$OMP PARALLEL
+!$OMP DO schedule(auto)
 #endif
-      FORALL (n=1:Max_NumConx)
-!
+      DO n=1,Max_NumConx
          ConxFlow(n)%rate(1:NumMobPhases)     = 0.0d0
          ConxFlow(n)%DarcyVel(1:NumMobPhases) = 0.0d0
          ConxFlow(n)%PoreVel(1:NumMobPhases)  = 0.0d0
-!
          ConxFlow(n)%CompInPhase(1:NumCom,1:NumMobPhases) = 0.0d0
-!
-      END FORALL
-!
+      END DO
 #ifdef USE_OMP
-!$OMP END WORKSHARE
+!$OMP END DO
+!$OMP END PARALLEL
 #endif
 
 #ifdef USE_TIMER
-         call cpu_time(finish)
+            call CPU_Timing_Routine(finish)
 
-         write (*,*) __FILE__, ":", __LINE__, " time: ", finish-start
+            write (*,*) __FILE__, ":", __LINE__, " time: ", finish-start
 #endif
+!
 !
 !***********************************************************************
 !*                                                                     *
@@ -1257,8 +1256,8 @@
 !
 ! ......Read the connection-associated element numbers
 !
-                    READ(*,5010)          (conx(N)%n1,conx(N)%n2, N=1,NumConx)
-                    WRITE(MESH_Unit,5010) (conx(N)%n1,conx(N)%n2, N=1,NumConx)
+                    READ(*,5010)          (conx%n1(N),conx%n2(N), N=1,NumConx)
+                    WRITE(MESH_Unit,5010) (conx%n1(N),conx%n2(N), N=1,NumConx)
 !
 ! ......The connection data read-in is completed
 !
@@ -3247,14 +3246,14 @@
 !*                                                                     *
 !***********************************************************************
 !
-         elem(elem_number)%name     = elem_name
-         elem(elem_number)%MatNum   = elem_MatNum
-         elem(elem_number)%vol      = elem_vol
-         elem(elem_number)%activity = elem_activity
+         elem%name(elem_number) = elem_name
+         elem%MatNum(elem_number) = elem_MatNum
+         elem%vol(elem_number) = elem_vol
+         elem%activity(elem_number) = elem_activity
 !
-         elem(elem_number)%coord(1) = X_co
-         elem(elem_number)%coord(2) = Y_co
-         elem(elem_number)%coord(3) = Z_co
+         elem%coord(elem_number,1) = X_co
+         elem%coord(elem_number,2) = Y_co
+         elem%coord(elem_number,3) = Z_co
 !
 ! <<<
 ! <<< End of the ELEMENT LOOP
@@ -3277,7 +3276,7 @@
 !
       WRITE(Plot_coord_Unit,6050)
       DO n = 1,NumElemTot
-         WRITE(Plot_coord_Unit,6002) n,elem(n)%coord(1),elem(n)%coord(2),elem(n)%coord(3)
+         WRITE(Plot_coord_Unit,6002) n,elem%coord(n,1),elem%coord(n,2),elem%coord(n,3)
       END DO
 !
 !***********************************************************************
@@ -3292,7 +3291,7 @@
 !
          DO_NumEleB: DO n = 1,NumElemTot
 !
-            IF(elem(n)%name == TrackElemName) THEN
+            IF(elem%name(n) == TrackElemName) THEN
                TrackElemNum = n
                EXIT
             END IF
@@ -3394,7 +3393,7 @@
       LOGICAL :: known_ElemNum_in_connections = .FALSE.
 !
 #ifdef USE_TIMER
-         real :: start, finish
+         real(KIND = 8) :: start, finish
 #endif
 !
 !  =>=>=>=>=>=>=>=>=>=>=>=>=>=>=>=>=>=>=>=>   Main body of Read_Connections_From_MESH
@@ -3406,26 +3405,10 @@
 ! ... Initializations
 ! ----------
 !
-#ifdef USE_TIMER
-         call cpu_time(start)
-#endif
-
-#ifdef USE_OMP
-!$OMP WORKSHARE
-#endif
       NumConx = 0
       ipluss  = 0
 !
       isumd  = 0  ! Whole array operation
-#ifdef USE_OMP
-!$OMP END WORKSHARE
-#endif
-
-#ifdef USE_TIMER
-         call cpu_time(finish)
-
-         write (*,*) __FILE__, ":", __LINE__, " time: ", finish-start
-#endif
 !
 ! ----------
 ! ... Reading the headings of the block ÒCONNEÓ
@@ -3445,22 +3428,21 @@
 ! ... Initialization - CAREFUL! Whole array operations
 !
 #ifdef USE_TIMER
-         call cpu_time(start)
+            call CPU_Timing_Routine(start)
 #endif
 
 #ifdef USE_OMP
-!$OMP WORKSHARE
+!$OMP SIMD
 #endif
-         conx%n1 = 0
-         conx%n2 = 0
-#ifdef USE_OMP
-!$OMP END WORKSHARE
-#endif
+      DO i=1,Max_NumConx
+         conx%n1(i) = 0
+         conx%n2(i) = 0
+      END DO
 
 #ifdef USE_TIMER
-         call cpu_time(finish)
+            call CPU_Timing_Routine(finish)
 
-         write (*,*) __FILE__, ":", __LINE__, " time: ", finish-start
+            write (*,*) __FILE__, ":", __LINE__, " time: ", finish-start
 #endif
 !
          conx%name1 = '        '
@@ -3496,20 +3478,20 @@
 ! ......... Read the element data from the CONNE block of MESH - 8-character elements
 ! ----------------
 !
-         READ(IM,5001) conx(n)%name1,  &  ! 5-Character name of connection element #1
-     &                 conx(n)%name2,  &  ! 5-Character name of connection element #2
-     &                 conx(n)%ki,     &  ! Directional indicator of the permeability tensor
-     &                 conx(n)%d1,     &  ! Distance of the center of element #1 from interface (m)
-     &                 conx(n)%d2,     &  ! Distance of the center of element #2 from interface (m)
-     &                 conx(n)%area,   &  ! Interface area (m^2)
-     &                 conx(n)%beta       ! = COS(b), b = angle between the vertical and the connection line
+         READ(IM,5001) conx%name1(n),  &  ! 5-Character name of connection element #1
+     &                 conx%name2(n),  &  ! 5-Character name of connection element #2
+     &                 conx%ki(n),     &  ! Directional indicator of the permeability tensor
+     &                 conx%d1(n),     &  ! Distance of the center of element #1 from interface (m)
+     &                 conx%d2(n),     &  ! Distance of the center of element #2 from interface (m)
+     &                 conx%area(n),   &  ! Interface area (m^2)
+     &                 conx%beta(n)       ! = COS(b), b = angle between the vertical and the connection line
 !
-         IF(conx(n)%name1 == conx(n)%name2 .AND. conx(n)%name1(1:5) /= '     ') THEN
+         IF(conx%name1(n) == conx%name2(n) .AND. conx%name1(n) /= '     ') THEN
             WRITE(*,6075) n
             STOP
          END IF
 !
-         EL5_CR = conx(n)%name1(1:5)
+         EL5_CR = conx%name1(n)
 !
 ! -------------
 ! ...... If EL5_CR = Ô+++  Ô, read element numbers in the connection list
@@ -3519,7 +3501,7 @@
 !
             NumConx = n-1                                          ! Define actual NumConx
 !
-            READ(IM,5003) (conx(i)%n1,conx(i)%n2, i=1,NumConx)     ! Read connection-element # data, 5-ch. names
+            READ(IM,5003) (conx%n1(i),conx%n2(i), i=1,NumConx)     ! Read connection-element # data, 5-ch. names
 !
             known_ElemNum_in_connections = .TRUE.
 !
@@ -3543,12 +3525,12 @@
 ! ...... Determine the number of connections along the principal directions
 ! -------------
 !
-         IF(conx(n)%ki == 1) isumd(1) = isumd(1)+1
-         IF(conx(n)%ki == 2) isumd(2) = isumd(2)+1
-         IF(conx(n)%ki == 3) isumd(3) = isumd(3)+1
+         IF(conx%ki(n) == 1) isumd(1) = isumd(1)+1
+         IF(conx%ki(n) == 2) isumd(2) = isumd(2)+1
+         IF(conx%ki(n) == 3) isumd(3) = isumd(3)+1
 !
-         IF_3to2D: IF(conx(n)%ki < 0) THEN
-                      IF(conx(n)%ki == -2) THEN
+         IF_3to2D: IF(conx%ki(n) < 0) THEN
+                      IF(conx%ki(n) == -2) THEN
                          isumd(3) = isumd(3)+1
                       ELSE
                          isumd(1) = isumd(1)+1
@@ -3620,7 +3602,7 @@
 !
       WRITE(IM,6003)      ! Write '+++  ' at the end of MESH
 !
-      WRITE(IM,5003) (conx(i)%n1,conx(i)%n2, i=1,NumConx)
+      WRITE(IM,5003) (conx%n1(i),conx%n2(i), i=1,NumConx)
 !
       ENDFILE IM
 !
@@ -3752,6 +3734,10 @@
       CHARACTER(LEN = 4) :: SS_Typ
       CHARACTER(LEN = 5) :: EL5_CR, DENT
 !
+#ifdef USE_TIMER
+            real(KIND = 8) :: start, finish
+#endif
+
 !
 !  =>=>=>=>=>=>=>=>=>=>=>=>=>=>=>=>=>=>=>  Main body of Read_File_GENER
 !
@@ -3865,9 +3851,27 @@
 ! ......... Determine the element number in the cell that contains the source/sink
 ! ----------------
 !
+#ifdef USE_TIMER
+            call CPU_Timing_Routine(start)
+#endif
+
+#ifdef USE_OMP
+!$OMP PARALLEL
+!$OMP DO schedule(auto)
+#endif
             DO j=1,NumElemTot
-               FORALL (i=1:NumSS, elem(j)%name == SS(i)%ElemName) SS(i)%ElemNum = j
+               FORALL (i=1:NumSS, elem%name(j) == SS(i)%ElemName) SS(i)%ElemNum = j
             END DO
+#ifdef USE_OMP
+!$OMP END DO
+!$OMP END PARALLEL
+#endif
+
+#ifdef USE_TIMER
+            call CPU_Timing_Routine(finish)
+
+            write (*,*) __FILE__, ":", __LINE__, " time: ", finish-start
+#endif
 !
 ! ----------------
 ! ......... Determining the sources not corresponding to actual elements
@@ -4124,6 +4128,10 @@
 !
       LOGICAL :: end_of_subblock_reached = .FALSE.
 !
+#ifdef USE_TIMER
+            real(KIND = 8) :: start, finish
+#endif
+
 ! -------
 ! ... Namelist 1: Continuation data
 ! -------
@@ -4175,14 +4183,14 @@
 !***********************************************************************
 !
 !
-      ElemMedia(1:NumElemTot,current)%porosity = media(elem(1:NumElemTot)%MatNum)%Poros      ! Assign porosities
+      ElemMedia(1:NumElemTot,current)%porosity = media(elem%MatNum(1:NumElemTot))%Poros      ! Assign porosities
 !
 !**********************************************************************
 !*****Parallelize Initial generic hydraulic properties and related
 !*****options                                                       ***
 !**********************************************************************
       DO i = 1,3
-         ElemMedia(1:NumElemTot,current)%perm(i) = media(elem(1:NumElemTot)%MatNum)%Perm(i)  ! Assign permeabilities
+         ElemMedia(1:NumElemTot,current)%perm(i) = media(elem%MatNum(1:NumElemTot))%Perm(i)  ! Assign permeabilities
       END DO
 !
 !
@@ -4238,7 +4246,14 @@
 !*                                                                     *
 !***********************************************************************
 !
-!Cannot be parallelized
+#ifdef USE_TIMER
+            call CPU_Timing_Routine(start)
+#endif
+
+#ifdef USE_OMP
+!$OMP PARALLEL PRIVATE(nloc)
+!$OMP DO schedule(auto)
+#endif
       DO_NumEle: DO n=1,NumElemTot
 !
          nloc = Locp(n)      ! Determine the location in the arrays
@@ -4251,6 +4266,16 @@
          X(nloc+1 : nloc+NumComPlus1) = default_initial_cond(1:NumComPlus1)  ! Assign initial conditions: Whole array operation !!!
 !
       END DO DO_NumEle
+#ifdef USE_OMP
+!$OMP END DO
+!$OMP END PARALLEL
+#endif
+
+#ifdef USE_TIMER
+            call CPU_Timing_Routine(finish)
+
+            write (*,*) __FILE__, ":", __LINE__, " time: ", finish-start
+#endif
 !
 !
 !
@@ -4399,7 +4424,7 @@
 !
          DO_NumEle2: DO j=1,NumElemTot
 !
-            IF(elem(j)%name(1:5) /= name) CYCLE DO_NumEle2
+            IF(elem%name(j) /= name) CYCLE DO_NumEle2
 !
             jloc = Locp(j)                                   ! Determine pointer
 !
@@ -4440,20 +4465,49 @@
 !***********************************************************************
 !
 !
-      ElemState%index(:,previous) = ElemState%index(:,current)                                            ! CAREFUL! Whole array operation
+
+#ifdef USE_TIMER
+            call CPU_Timing_Routine(start)
+#endif
+
+#ifdef USE_OMP
+!$OMP PARALLEL
+!$OMP DO schedule(auto)
+#endif
+         DO i=1,Max_NumElem
+            ElemState%index(i,previous) = ElemState%index(i,current)                                            ! CAREFUL! Whole array operation
+         END DO
+#ifdef USE_OMP
+!$OMP END DO
+!$OMP DO schedule(auto)
+#endif
+      DO i=1,NumElemTot
+         ElemMedia(i,original)%porosity = ElemMedia(i,current)%porosity
+         ElemMedia(i,previous)%porosity = ElemMedia(i,current)%porosity
 !
-      ElemMedia(1:NumElemTot,original)%porosity = ElemMedia(1:NumElemTot,current)%porosity
-      ElemMedia(1:NumElemTot,previous)%porosity = ElemMedia(1:NumElemTot,current)%porosity
-!
-      FORALL (i=1:3)
-         ElemMedia(1:NumElemTot,original)%perm(i) = ElemMedia(1:NumElemTot,current)%perm(i)
-         ElemMedia(1:NumElemTot,previous)%perm(i) = ElemMedia(1:NumElemTot,current)%perm(i)
-      END FORALL
-!
-      DO j = 1,NumEqu
-         ElemMedia(1:NumElemTot,j)%porosity               = ElemMedia(1:NumElemTot,current)%porosity  ! Initialize the incremented-state porosity
-         FORALL (i=1:3) ElemMedia(1:NumElemTot,j)%perm(i) = ElemMedia(1:NumElemTot,current)%perm(i)   ! Initialize the incremented-state permeability
+         ElemMedia(i,original)%perm = ElemMedia(i,current)%perm
+         ElemMedia(i,previous)%perm = ElemMedia(i,current)%perm
       END DO
+#ifdef USE_OMP
+!$OMP END DO
+!$OMP DO schedule(auto)
+#endif
+      DO i=1,NumElemTot
+        DO j = 1,NumEqu
+           ElemMedia(i,j)%porosity = ElemMedia(i,current)%porosity  ! Initialize the incremented-state porosity
+           ElemMedia(i,j)%perm  = ElemMedia(i,current)%perm   ! Initialize the incremented-state permeability
+        END DO
+      END DO
+#ifdef USE_OMP
+!$OMP END DO
+!$OMP END PARALLEL
+#endif
+
+#ifdef USE_TIMER
+            call CPU_Timing_Routine(finish)
+
+            write (*,*) __FILE__, ":", __LINE__, " time: ", finish-start
+#endif
 !
 !
 !***********************************************************************

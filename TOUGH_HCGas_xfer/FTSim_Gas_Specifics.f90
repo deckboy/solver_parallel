@@ -663,30 +663,30 @@
 !
       IF_PrintOptions: IF(Option_OutputFormat == 'STAN') THEN
 !
-         IF_act1: IF(elem(n)%activity /= 'I' .AND. elem(n)%activity /= 'V') THEN     ! Active elements
+         IF_act1: IF(elem%activity(n) /= 'I' .AND. elem%activity(n) /= 'V') THEN     ! Active elements
 !
 !
-            WRITE(*, 6012) ADJUSTR(elem(n)%name),N,               &
+            WRITE(*, 6012) ADJUSTR(elem%name(n)),N,               &
      &                     ElemState%pres(n,0),                  &
      &                     ElemState%temp(n,0),                  &
-     &                     elem(n)%coord(3),                      &
+     &                     elem%coord(n,3),                      &
      &                     ElemProp(n,0)%density(GasPhase),       &
      &                     ElemProp(n,0)%viscosity(GasPhase),     &
      &                     ElemProp(n,0)%MassFrac(gas_2,GasPhase),  &
-     &                     elem(n)%coord(1),                      &
+     &                     elem%coord(n,1),                      &
      &                     ElemProp(n,0)%enthalpy(GasPhase),      &
      &                     ElemProp(n,0)%IntEnergy(GasPhase)
 !
          ELSE
 !
-            WRITE(*, 6011) ADJUSTR(elem(n)%name),N,               &
+            WRITE(*, 6011) ADJUSTR(elem%name(n)),N,               &
      &                     ElemState%pres(n,0),                  &
      &                     ElemState%temp(n,0),                  &
-     &                     elem(n)%coord(3),                      &
+     &                     elem%coord(n,3),                      &
      &                     ElemProp(n,0)%density(GasPhase),       &
      &                     ElemProp(n,0)%viscosity(GasPhase),     &
      &                     ElemProp(n,0)%MassFrac(gas_2,GasPhase),  &
-     &                     elem(n)%coord(1),                      &
+     &                     elem%coord(n,1),                      &
      &                     ElemProp(n,0)%enthalpy(GasPhase),      &
      &                     ElemProp(n,0)%IntEnergy(GasPhase)
 !
@@ -698,10 +698,10 @@
 !
       ELSEIF(Option_OutputFormat == 'BOTH') THEN
 
-         IF_act2: IF(elem(n)%activity /= 'I' .AND. elem(n)%activity /= 'V') THEN     ! Active elements
+         IF_act2: IF(elem%activity(n) /= 'I' .AND. elem%activity(n) /= 'V') THEN     ! Active elements
 !
 !
-            WRITE(*, 6012) ADJUSTR(elem(n)%name),N,               &
+            WRITE(*, 6012) ADJUSTR(elem%name(n)),N,               &
      &                     ElemState%pres(n,0),                  &
      &                     ElemState%temp(n,0),                  &
      &                     ElemProp(n,0)%satur(GasPhase),         &
@@ -713,7 +713,7 @@
 !
          ELSE
 !
-            WRITE(*, 6011) ADJUSTR(elem(n)%name),N,               &
+            WRITE(*, 6011) ADJUSTR(elem%name(n)),N,               &
      &                     ElemState%pres(n,0),                  &
      &                     ElemState%temp(n,0),                  &
      &                     ElemProp(n,0)%satur(GasPhase),         &
@@ -728,8 +728,8 @@
 !
          IF_Coord1: IF(coordinate_system == 'cyl' .OR. coordinate_system == 'CYL' .OR. coordinate_system == 'Cyl') THEN
 !
-               WRITE(Plot_Elem_Unit,6013) ADJUSTR(elem(n)%name),N,                 &
-     &                                  elem(n)%coord(1), elem(n)%coord(3),      &
+               WRITE(Plot_Elem_Unit,6013) ADJUSTR(elem%name(n)),N,                 &
+     &                                  elem%coord(n,1), elem%coord(n,3),      &
      &                     ElemState%pres(n,0),                  &
      &                     ElemState%temp(n,0),                  &
      &                                  ElemProp(n,0)%satur(GasPhase),           &
@@ -740,8 +740,8 @@
      &                                  ElemProp(n,0)%IntEnergy(GasPhase)
             ELSE
 !
-               WRITE(Plot_Elem_Unit,6013) ADJUSTR(elem(n)%name),N,                               &
-     &                                  elem(n)%coord(1), elem(n)%coord(2), elem(n)%coord(3),  &
+               WRITE(Plot_Elem_Unit,6013) ADJUSTR(elem%name(n)),N,                               &
+     &                                  elem%coord(n,1), elem%coord(n,2), elem%coord(n,3),  &
      &                     ElemState%pres(n,0),                  &
      &                     ElemState%temp(n,0),                  &
      &                                  ElemProp(n,0)%satur(GasPhase),                         &
@@ -761,8 +761,8 @@
 !
             IF_Coord2: IF(coordinate_system == 'cyl' .OR. coordinate_system == 'CYL' .OR. coordinate_system == 'Cyl') THEN
 !
-               WRITE(Plot_Elem_Unit,6013) ADJUSTR(elem(n)%name),N,  &
-     &                     elem(n)%coord(1), elem(n)%coord(3),    &
+               WRITE(Plot_Elem_Unit,6013) ADJUSTR(elem%name(n)),N,  &
+     &                     elem%coord(n,1), elem%coord(n,3),    &
      &                     ElemState%pres(n,0),                  &
      &                     ElemState%temp(n,0),                  &
      &                     ElemProp(n,0)%satur(GasPhase),         &
@@ -774,8 +774,8 @@
 !
             ELSE
 !
-               WRITE(Plot_Elem_Unit,6014) ADJUSTR(elem(n)%name),N,                &
-     &                     elem(n)%coord(1), elem(n)%coord(2), elem(n)%coord(3),  &
+               WRITE(Plot_Elem_Unit,6014) ADJUSTR(elem%name(n)),N,                &
+     &                     elem%coord(n,1), elem%coord(n,2), elem%coord(n,3),  &
      &                     ElemState%pres(n,0),                  &
      &                     ElemState%temp(n,0),                  &
      &                     ElemProp(n,0)%satur(GasPhase),                         &
@@ -835,9 +835,9 @@
 !
       DO_NumCon1: DO n=1,NumConx
 !
-         IF(conx(n)%n1 == 0 .OR. conx(n)%n2 == 0) CYCLE
+         IF(conx%n1(n) == 0 .OR. conx%n2(n) == 0) CYCLE
 !
-         WRITE(*,6028)  ADJUSTR(conx(n)%name1), ADJUSTR(conx(n)%name2), N,  &
+         WRITE(*,6028)  ADJUSTR(conx%name1(n)), ADJUSTR(conx%name2(n)), N,  &
      &                  ConxFlow(n)%rate(GasPhase),                         &
      &                  ConxFlow(n)%CompInPhase(gas_2,GasPhase),              &
      &                  ConxFlow(n)%PoreVel(GasPhase)
@@ -848,9 +848,9 @@
 !
       DO_NumCon2: DO n=1,NumConx
 !
-         IF(conx(n)%n1 == 0 .OR. conx(n)%n2 == 0) CYCLE
+         IF(conx%n1(n) == 0 .OR. conx%n2(n) == 0) CYCLE
 !
-         WRITE(*,6028)  ADJUSTR(conx(n)%name1), ADJUSTR(conx(n)%name2), N,  &
+         WRITE(*,6028)  ADJUSTR(conx%name1(n)), ADJUSTR(conx%name2(n)), N,  &
      &                  ConxFlow(n)%rate(GasPhase),                         &
      &                  ConxFlow(n)%CompInPhase(gas_2,GasPhase),              &
      &                  ConxFlow(n)%PoreVel(GasPhase)
@@ -866,7 +866,7 @@
 !
          DO_NumCon3: DO n=1,NumConx
 !
-            IF(conx(n)%n1 == 0 .OR. conx(n)%n2 == 0) CYCLE DO_NumCon3
+            IF(conx%n1(n) == 0 .OR. conx%n2(n) == 0) CYCLE DO_NumCon3
 !
             WRITE(Plot_Conx_Unit,6014) ConxFlow(n)%heat,                                                             &
      &                                 ConxFlow(n)%rate(GasPhase),            ConxFlow(n)%rate(GasPhase),            &
@@ -922,14 +922,14 @@
 !
          NLOC = Locp(n)
 !
-         IF_act4: IF(elem(n)%activity /= 'I') THEN    ! Active elements
+         IF_act4: IF(elem%activity(n) /= 'I') THEN    ! Active elements
 !
-            WRITE(*, FMT = 6040) ADJUSTR(elem(n)%name), N, ( X(NLOC+i), i = 1,NumComPlus1 ), &
+            WRITE(*, FMT = 6040) ADJUSTR(elem%name(n)), N, ( X(NLOC+i), i = 1,NumComPlus1 ), &
      &                                                     ( DX(NLOC+i), i = 1,NumComPlus1 ), ElemMedia(n,current)%porosity
 !
          ELSE
 !
-            WRITE(*, FMT = 6041) ADJUSTR(elem(n)%name), N, ( X(NLOC+i), i = 1,NumComPlus1 ), &
+            WRITE(*, FMT = 6041) ADJUSTR(elem%name(n)), N, ( X(NLOC+i), i = 1,NumComPlus1 ), &
      &                                                     ( DX(NLOC+i), i = 1,NumComPlus1 ), ElemMedia(n,current)%porosity
 !
          END IF IF_act4
@@ -1167,7 +1167,7 @@
       LOGICAL :: First_call = .TRUE.
 
 #ifdef USE_TIMER
-         real :: start, finish
+      real(KIND = 8) :: start, finish
 #endif
 !
 ! -------
@@ -1197,26 +1197,10 @@
 ! ... Initialize arrays - CAREFUL: Whole array operation
 ! ----------
 !
-#ifdef USE_TIMER
-         call cpu_time(start)
-#endif
-
-#ifdef USE_OMP
-!$OMP WORKSHARE
-#endif
       vol_phase  = 0.0d0
       mass_phase = 0.0d0
       mass_comp  = 0.0d0
       mass_CinPh = 0.0d0
-#ifdef USE_OMP
-!$OMP END WORKSHARE
-#endif
-
-#ifdef USE_TIMER
-         call cpu_time(finish)
-
-         write (*,*) __FILE__, ":", __LINE__, " time: ", finish-start
-#endif
 !
 ! ... Printing out headings
 !
@@ -1238,7 +1222,14 @@
 !>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 !
 !
-!
+#ifdef USE_TIMER
+            call CPU_Timing_Routine(start)
+#endif
+
+#ifdef USE_OMP
+!$OMP PARALLEL PRIVATE (n)
+!$OMP DO schedule(auto)
+#endif
       DO_NumPhase: DO i=1,NumPhases
 !
 ! ...... Determine the product (Vol*Phi*Saturation)
@@ -1246,7 +1237,7 @@
          FORALL (n=1:NumElem) CO(n) = ElemProp(n,0)%satur(i)
 !
 !array operation
-         CO(NumElem+1 : 2*NumElem) = ElemMedia(1:NumElem,current)%porosity * elem(1:NumElem)%vol * CO(1:NumElem)
+         CO(NumElem+1 : 2*NumElem) = ElemMedia(1:NumElem,current)%porosity * elem%vol(1:NumElem) * CO(1:NumElem)
 !CO is a 1-D array w/: sat in 1st block, phi*V*sat in 2nd block
 !
 ! ...... Determine the product (Vol*Phi*Saturation*Dens)
@@ -1295,6 +1286,16 @@
 ! <<<
 !
       END DO DO_NumPhase
+#ifdef USE_OMP
+!$OMP END DO
+!$OMP END PARALLEL
+#endif
+
+#ifdef USE_TIMER
+            call CPU_Timing_Routine(finish)
+
+            write (*,*) __FILE__, ":", __LINE__, " time: ", finish-start
+#endif
 !
 !
 !***********************************************************************

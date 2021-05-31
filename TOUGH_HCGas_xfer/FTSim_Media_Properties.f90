@@ -82,6 +82,10 @@
 !
       LOGICAL :: First_call = .TRUE.
 !
+#ifdef USE_TIMER
+            real(KIND = 8) :: start, finish
+#endif
+
 ! -------
 ! ... Saving variables
 ! -------
@@ -115,6 +119,14 @@
 !
       IF_VarPorosity: IF(variable_porosity) THEN
 !
+#ifdef USE_TIMER
+            call CPU_Timing_Routine(start)
+#endif
+
+#ifdef USE_OMP
+!$OMP PARALLEL PRIVATE(k, n, mn)
+!$OMP DO schedule(auto)
+#endif
          DO_NumEquA: DO k = 0,NumEqu
 !
 !***********************************************************************
@@ -122,7 +134,7 @@
 !***********************************************************************
             DO n = 1,N1
 !
-               mn = elem(n)%MatNum
+               mn = elem%MatNum(n)
 !
 ! ............ Standard treatment: Porosity as an exponential function of P, T, compressibility and expansivity
 !
@@ -133,6 +145,16 @@
             END DO
 !
          END DO DO_NumEquA
+#ifdef USE_OMP
+!$OMP END DO
+!$OMP END PARALLEL
+#endif
+
+#ifdef USE_TIMER
+            call CPU_Timing_Routine(finish)
+
+            write (*,*) __FILE__, ":", __LINE__, " time: ", finish-start
+#endif
 !
       END IF IF_VarPorosity
 !

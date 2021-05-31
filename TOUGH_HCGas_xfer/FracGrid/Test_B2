@@ -89,7 +89,7 @@ BOUND
 !
 !
 >>>SOLVER
-&Solver_Specifications          MatrixSolver                    = 3,        !!MatrixSolver = 1 for direct,  2 for DSLUBC, 3 for DBLUS
+&Solver_Specifications          MatrixSolver                    = 4,        !!MatrixSolver = 1 for direct,  2 for DSLUBC, 3 for DBLUS
                                 Max_CGIterationRatio            = 1.0d-1,   !
                                 CG_convergence_crit             = 1.0d-8    !
                                 /

@@ -442,15 +442,15 @@
 !
          TYPE Element_Geometry
 !
-            CHARACTER(LEN = 5) :: name                       ! Element name
+            CHARACTER(LEN = 5), POINTER, DIMENSION(:) :: name                       ! Element name
 !
-            CHARACTER(LEN = 1) :: activity                   ! Activity flag
+            CHARACTER(LEN = 1), POINTER, DIMENSION(:) :: activity                   ! Activity flag
 !
-            INTEGER(KIND = 2) :: MatNum                      ! Element material #
+            INTEGER(KIND = 2), POINTER, DIMENSION(:) :: MatNum                      ! Element material #
 !
-            REAL(KIND = 8) :: vol                            ! Element volume
+            REAL(KIND = 8), POINTER, DIMENSION(:) :: vol                            ! Element volume
 !
-            REAL(KIND = 4), DIMENSION(3) :: coord            ! Coordinates of element center
+            REAL(KIND = 4), POINTER, DIMENSION(:,:) :: coord            ! Coordinates of element center
 !
          END TYPE Element_Geometry
 !
@@ -460,14 +460,17 @@
 !
          TYPE Connection_Geometry
 !
-            CHARACTER(LEN = 5) :: name1, name2               ! Element names in the connection
+            CHARACTER(LEN = 5), POINTER, DIMENSION(:) :: name1               ! Element names in the connection
+            CHARACTER(LEN = 5), POINTER, DIMENSION(:) :: name2               ! Element names in the connection
 !
-            INTEGER :: n1,n2                                 ! Element numbers in the connection
-            INTEGER :: ki                                    ! Permeability index (direction on which the connection permeability is based)
+            INTEGER, POINTER, DIMENSION(:) :: n1                                 ! Element numbers in the connection
+            INTEGER, POINTER, DIMENSION(:) :: n2                                 ! Element numbers in the connection
+            INTEGER, POINTER, DIMENSION(:) :: ki                                    ! Permeability index (direction on which the connection permeability is based)
 !
-            REAL(KIND = 8) :: d1,d2                          ! Distance from interface (m)
-            REAL(KIND = 8) :: area                           ! Interface area (m^2)
-            REAL(KIND = 8) :: beta                           ! Cos(angle) with vertical
+            REAL(KIND = 8), POINTER, DIMENSION(:) :: d1                          ! Distance from interface (m)
+            REAL(KIND = 8), POINTER, DIMENSION(:) :: d2                          ! Distance from interface (m)
+            REAL(KIND = 8), POINTER, DIMENSION(:) :: area                           ! Interface area (m^2)
+            REAL(KIND = 8), POINTER, DIMENSION(:) :: beta                           ! Cos(angle) with vertical
 !
          END TYPE Connection_Geometry
 !
@@ -475,10 +478,9 @@
 ! ...... Derived-type arrays
 ! ----------
 !
-         !TODO convert to struct of arrays
-         TYPE(Element_Geometry), ALLOCATABLE, DIMENSION(:) :: elem
+         TYPE(Element_Geometry) :: elem
 !
-         TYPE(Connection_Geometry), ALLOCATABLE, DIMENSION(:) :: conx
+         TYPE(Connection_Geometry) :: conx
 !
 ! ----------
 ! ...... Double precision allocatable arrays
@@ -525,16 +527,7 @@
 !
             INTEGER, INTENT(IN) :: num_inact_elem, NumElem, NumElemTot, Max_NumElem, MemoryAlloc_Unit
 !
-! -------------
-! ......... Derived-type arrays
-! -------------
-!
-            TYPE Elem_Object
-               TYPE(Element_Geometry)  :: elem
-               REAL(KIND = 8)          :: aht
-            END TYPE Elem_Object
-!
-           TYPE(Elem_Object), ALLOCATABLE, DIMENSION(:) :: temp_elem
+            TYPE(Element_Geometry) :: temp_elem
 !
 ! -------------
 ! ......... Integer variables
@@ -546,7 +539,7 @@
 ! =>=>=>=>=>=>=>=>=>=>=>=>=>=>=>=>=>=>=>=>  Main body of <Renumber_Elements>
 !
 
-            ALLOCATE(temp_elem(num_inact_elem), STAT=ier)          ! First, allocate some memory
+            ALLOCATE(temp_elem%name(num_inact_elem), temp_elem%activity(num_inact_elem), temp_elem%MatNum(num_inact_elem), temp_elem%vol(num_inact_elem), temp_elem%coord(num_inact_elem, 3), STAT=ier)          ! First, allocate some memory
 !
 ! ......... Print explanatory comments
 !
@@ -562,18 +555,27 @@
 ! ......... Use the temporary array for storage of information
 !
 !
-            temp_elem(1 : num_inact_elem : 1)%elem = elem(Max_NumElem : Max_NumElem-num_inact_elem+1 : -1)
+            temp_elem%name(1 : num_inact_elem : 1)     = elem%name(Max_NumElem : Max_NumElem-num_inact_elem+1 : -1)
+            temp_elem%activity(1 : num_inact_elem : 1) = elem%activity(Max_NumElem : Max_NumElem-num_inact_elem+1 : -1)
+            temp_elem%MatNum(1 : num_inact_elem : 1)   = elem%MatNum(Max_NumElem : Max_NumElem-num_inact_elem+1 : -1)
+            temp_elem%vol(1 : num_inact_elem : 1)      = elem%vol(Max_NumElem : Max_NumElem-num_inact_elem+1 : -1)
+            temp_elem%coord(1 : num_inact_elem : 1, :) = elem%coord(Max_NumElem : Max_NumElem-num_inact_elem+1 : -1, :)
 !
 !
 ! ......... Renumber inactive element starting on element NumElem+1 and assign properties
 !
 !
-            elem(NumElem+1 : NumElemTot) = temp_elem(1:num_inact_elem)%elem
+            !elem(NumElem+1 : NumElemTot) = temp_elem(1:num_inact_elem)%elem
+            elem%name(NumElem+1 : NumElemTot)     = temp_elem%name(1 : num_inact_elem)
+            elem%activity(NumElem+1 : NumElemTot) = temp_elem%activity(1 : num_inact_elem)
+            elem%MatNum(NumElem+1 : NumElemTot)   = temp_elem%MatNum(1 : num_inact_elem)
+            elem%vol(NumElem+1 : NumElemTot)      = temp_elem%vol(1 : num_inact_elem)
+            elem%coord(NumElem+1 : NumElemTot, :) = temp_elem%coord(1 : num_inact_elem, :)
 !
 !
 ! ......... Finally, deallocate memory
 !
-            DEALLOCATE(temp_elem, STAT=ier)
+            DEALLOCATE(temp_elem%name, temp_elem%activity, temp_elem%MatNum, temp_elem%vol, temp_elem%coord, STAT=ier)
 !
 ! ......... Print explanatory comments
 !
@@ -651,7 +653,7 @@
             INTEGER :: N_invalid_elem, n
 !
 #ifdef USE_TIMER
-            real :: start, finish
+            real(KIND = 8) :: start, finish
 #endif
 
 #ifdef USE_CPP
@@ -686,53 +688,51 @@
 ! ......... Determine the element numbers of the connections
 !
 #ifdef USE_TIMER
-            call cpu_time(start)
+            call CPU_Timing_Routine(start)
 #endif
 
 #ifdef USE_CPP
+#ifdef USE_OMP
+!$OMP PARALLEL
+!$OMP DO schedule(auto)
+#endif
             DO n = 1,NumConx
-               n1(n) = conx(n)%n1
-               n2(n) = conx(n)%n2
-
-               name1(n) = conx(n)%name1
-               name2(n) = conx(n)%name2
-
-               name1_p(n) = C_LOC( name1(n) )
-               name2_p(n) = C_LOC( name2(n) )
+               name1_p(n) = C_LOC( conx%name1(n) )
+               name2_p(n) = C_LOC( conx%name2(n) )
             END DO
-
+#ifdef USE_OMP
+!$OMP END DO NOWAIT
+!$OMP DO schedule(auto)
+#endif
             DO n = 1,NumElemTot
-               elems(n) = elem(n)%name
-
-               elems_p(n) = C_LOC( elems(n) )
+               elems_p(n) = C_LOC( elem%name(n) )
             END DO
+#ifdef USE_OMP
+!$OMP END DO
+!$OMP END PARALLEL
+#endif
 
-            call check_edges(NumElemTot, NumConx, n1, n2, name1_p, name2_p, elems_p)
-
-            DO n = 1,NumConx
-               conx(n)%n1 = n1(n)
-               conx(n)%n2 = n2(n)
-            END DO
+            call check_edges(NumElemTot, NumConx, conx%n1, conx%n2, name1_p, name2_p, elems_p)
 #else
             DO n = 1,NumElemTot
-               WHERE(conx(1:NumConx)%name1 == elem(n)%name) conx(1:NumConx)%n1 = n   ! Identify the 1st elements in the connections
-               WHERE(conx(1:NumConx)%name2 == elem(n)%name) conx(1:NumConx)%n2 = n   ! Identify the 2nd elements in the connections
+               WHERE(conx%name1(1:NumConx) == elem%name(n)) conx%n1(1:NumConx) = n   ! Identify the 1st elements in the connections
+               WHERE(conx%name2(1:NumConx) == elem%name(n)) conx%n2(1:NumConx) = n   ! Identify the 2nd elements in the connections
             END DO
 
-            N_invalid_elem = COUNT(conx(1:NumConx)%n1 == 0) + COUNT(conx(1:NumConx)%n2 == 0)  ! Total # of invalid elements in connections
+            N_invalid_elem = COUNT(conx%n1(1:NumConx) == 0) + COUNT(conx%n2(1:NumConx) == 0)  ! Total # of invalid elements in connections
 
             IF(N_invalid_elem /= 0) THEN
                DO n = 1,NumConx
-                  IF(conx(n)%n1 == 0) WRITE(*, FMT = 6008) conx(n)%name1, n
-                  IF(conx(n)%n2 == 0) WRITE(*, FMT = 6008) conx(n)%name2, n
+                  IF(conx%n1(n) == 0) WRITE(*, FMT = 6008) conx%name1(n), n
+                  IF(conx%n2(n) == 0) WRITE(*, FMT = 6008) conx%name2(n), n
                END DO
             END IF
 #endif
 
 #ifdef USE_TIMER
-            call cpu_time(finish)
+            call CPU_Timing_Routine(finish)
 
-            write (*,*) __FILE__, ":", __LINE__, " CRR time: ", finish-start
+            write (*,*) __FILE__, ":", __LINE__, "edgelist check time: ", finish-start
 #endif
 !
 !
@@ -1118,7 +1118,7 @@
 !
          LOGICAL Flag_binary_diffusion
 #ifdef USE_TIMER
-         real :: start, finish
+         real(KIND = 8) :: start, finish
 #endif
 !
 ! ----------
@@ -1345,29 +1345,13 @@
 ! ----------
 !
 !
-         ALLOCATE(elem(Max_NumElem), ElemMedia(Max_NumElem, -2:NumEqu), STAT=ierror(1))    !Define arrays for elements, element state, element media (n,k) at original and successive timesteps
+         ALLOCATE(elem%name(Max_NumElem), elem%activity(Max_NumElem), elem%MatNum(Max_NumElem), elem%vol(Max_NumElem), elem%coord(Max_NumElem, 3), ElemMedia(Max_NumElem, -2:NumEqu), STAT=ierror(1))    !Define arrays for elements, element state, element media (n,k) at original and successive timesteps
 !
 ! ----------
 ! ...... Allocate memory for arrays within the variable <ElemState> (derived type)
 ! ----------
 !
-#ifdef USE_TIMER
-         call cpu_time(start)
-#endif
-
-#ifdef USE_OMP
-!$OMP PARALLEL DO
-#endif
-           ALLOCATE(ElemState%index(Max_NumElem, -1:0), ElemState%pres(Max_NumElem,-2:NumEqu), ElemState%temp(Max_NumElem,-2:NumEqu), ElemState%param(Max_NumElem,NumStateParam), STAT = ierror(2))
-#ifdef USE_OMP
-!$OMP END PARALLEL DO
-#endif
-
-#ifdef USE_TIMER
-         call cpu_time(finish)
-
-         write (*,*) __FILE__, ":", __LINE__, " time: ", finish-start
-#endif
+         ALLOCATE(ElemState%index(Max_NumElem, -1:0), ElemState%pres(Max_NumElem,-2:NumEqu), ElemState%temp(Max_NumElem,-2:NumEqu), ElemState%param(Max_NumElem,NumStateParam), STAT = ierror(2))
 ! ----------
 ! ...... Allocate memory to derived-type arrays - Secondary variables
 ! ----------
@@ -1417,22 +1401,12 @@
 ! ...... Allocate memory to derived-type arrays
 ! ----------
 !
-         ALLOCATE( conx(Max_NumConx), ConxFlow(Max_NumConx), STAT=ierror(9) )
+         ALLOCATE( conx%name1(Max_NumConx), conx%name2(Max_NumConx), conx%n1(Max_NumConx), conx%n2(Max_NumConx), conx%ki(Max_NumConx), conx%d1(Max_NumConx), conx%d2(Max_NumConx), conx%area(Max_NumConx), conx%beta(Max_NumConx), ConxFlow(Max_NumConx), STAT=ierror(9) )
 !
 ! ----------
 ! ...... Allocate memory to arrays within the derived type: Conx
 ! ----------
 !
-!***********************************************************************
-!***** Paralize this section                                 ***********
-!***********************************************************************
-#ifdef USE_TIMER
-         call cpu_time(start)
-#endif
-
-#ifdef USE_OMP
-!$OMP PARALLEL DO
-#endif
          DO_Conx1 : DO i = 1,Max_NumConx
 !
             ALLOCATE(ConxFlow(i)%rate(Max_NumMobPhases),     STAT = ierror(10))
@@ -1441,15 +1415,6 @@
             ALLOCATE(ConxFlow(i)%CompInPhase(Max_NumMassComp, Max_NumMobPhases),  STAT = ierror(12))
 !
          END DO DO_Conx1
-#ifdef USE_OMP
-!$OMP END PARALLEL DO
-#endif
-
-#ifdef USE_TIMER
-         call cpu_time(finish)
-
-         write (*,*) __FILE__, ":", __LINE__, " time: ", finish-start
-#endif
 !
 !
 !***********************************************************************

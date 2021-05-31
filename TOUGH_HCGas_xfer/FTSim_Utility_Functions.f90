@@ -118,6 +118,10 @@
 !
             INTEGER :: i
 !
+#ifdef USE_TIMER
+            real(KIND = 8) :: start, finish
+#endif
+
 ! -------------
 ! ......... Real input variables
 ! -------------
@@ -132,11 +136,27 @@
             n_poly = SIZE(A) - 1
             Integral_poly = A(n_poly)/(DBLE(n_poly) + 1.0d0)
 !
+#ifdef USE_TIMER
+            call CPU_Timing_Routine(start)
+#endif
+
+#ifdef USE_OMP
+!$OMP PARALLEL
+!$OMP DO schedule(auto) REDUCTION(+:Integral_poly)
+#endif
             DO i = n_poly-1,0,-1
-!
                Integral_poly = Integral_poly*argument + A(i)/(DBLE(i) + 1.0d0)
-!
             END DO
+#ifdef USE_OMP
+!$OMP END DO
+!$OMP END PARALLEL
+#endif
+
+#ifdef USE_TIMER
+            call CPU_Timing_Routine(finish)
+
+            write (*,*) __FILE__, ":", __LINE__, " time: ", finish-start
+#endif
 !
             Integral_poly = Integral_poly*argument
 !

@@ -2070,7 +2070,86 @@
       END
 !
 !
+!***************************************************************************
+!@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+!***************************************************************************
 !
+!
+        SUBROUTINE LIS(N, R, work, Non0, RowNum, ColNum, CO)
+!
+!
+!
+!#include "omp.h"
+        implicit none
+              INTEGER N, Non0, RowNum(Non0), ColNum(Non0), Row_New(Non0), Col_New(Non0)!!!!,index(N)-----save memory
+              DOUBLE PRECISION R(N), work(N),CO(Non0),start_time,end_time
+!
+#include "lisf.h"
+              LIS_MATRIX A
+              LIS_VECTOR b,x
+              LIS_SOLVER solver
+              LIS_INTEGER i,gn,ln,ierr
+              LIS_INTEGER matrix_type,comm_world
+              LIS_INTEGER omp_get_num_procs,omp_get_max_threads
+!
+        Row_New = RowNum-1
+        Col_New = ColNum-1
+!
+!
+!
+              call lis_initialize(ierr)
+!
+              matrix_type = LIS_MATRIX_COO
+              comm_world = LIS_COMM_WORLD
+              ln = 0
+!
+#ifdef _OPENMP
+!         write(*,*) 'max number of threads = ',omp_get_num_procs()
+!         write(*,*) 'number of threads = ', omp_get_max_threads()
+#endif
+!
+              call lis_matrix_create(comm_world,A,ierr)
+              call lis_matrix_set_size(A,ln,N,ierr)
+              call lis_matrix_set_type(A,matrix_type,ierr)
+              call lis_matrix_set_coo(Non0,Row_New,Col_New,CO,A,ierr)
+              call lis_matrix_assemble(A,ierr)
+              call lis_vector_duplicate(A,b,ierr)
+              call lis_vector_duplicate(A,x,ierr)
+!
+!-------------------alternative section for assigning vector values---------------
+!        do i=1,N
+!                index(i)=i
+!        enddo
+!
+!        call lis_vector_set_values(LIS_INS_VALUE,N,index,R,b,ierr)
+!        call lis_vector_set_values(LIS_INS_VALUE,N,index,work,x,ierr)
+!
+!-------------------alternative section for assigning vector values---------------
+        do i=1,N
+            call lis_vector_set_value(LIS_INS_VALUE,i,R(i),b,ierr)
+        enddo
+!
+        call lis_vector_set_all(0.0d0,x,ierr)
+        call lis_solver_create(solver,ierr)
+        call lis_solver_set_option('-i 5 -ell 2 -p 9',solver,ierr)
+        call lis_solver_set_option('-tol 1.0e-8',solver,ierr)
+!
+
+        call lis_solve(A,b,x,solver,ierr)
+!        call lis_solver_get_precon(solver,gn,ierr)
+!        PRINT *, 'preconditioner used is  ',gn
+!
+        call lis_vector_get_values(x,1,N,work,ierr)
+              call lis_solver_destroy(solver,ierr)
+        call lis_matrix_unset(A,ierr)
+        call lis_matrix_destroy(A,ierr)
+        call lis_vector_destroy(x,ierr)
+        call lis_vector_destroy(b,ierr)
+!
+        call lis_finalize(ierr)
+              RETURN
+              END
+
 !***********************************************************************
 !@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 

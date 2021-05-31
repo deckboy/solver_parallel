@@ -140,7 +140,7 @@
 !*                                                                     *
 !***********************************************************************
 !
-         nmat = elem(n)%MatNum
+         nmat = elem%MatNum(n)
          nloc = (n-1)*NumComPlus1
 !
 ! ----------
@@ -161,10 +161,10 @@
 !
          IF ( ( ABS(XX(1)) > 5.0d8 ) .OR. ( XX(1) < 0.0d0 ) .OR. ( XX(1) /= XX(1) ) ) unrealistic_conditions = .TRUE.
 !
-         IF (Option_Print_EOSInfo >= 7) WRITE(*,6102) elem(n)%name, XX(1:NumComPlus1)
+         IF (Option_Print_EOSInfo >= 7) WRITE(*,6102) elem%name(n), XX(1:NumComPlus1)
 !
          IF_NotGood: IF(unrealistic_conditions) THEN
-            CALL Warning(elem(n)%name, XX, NumComPlus1, NumTimeSteps)
+            CALL Warning(elem%name(n), XX, NumComPlus1, NumTimeSteps)
             RETURN
          END IF IF_NotGood
 !
@@ -303,6 +303,9 @@
 !
       LOGICAL :: First_call = .TRUE.
 !
+#ifdef USE_TIMER
+      real(KIND = 8) :: start, finish
+#endif
 ! -------
 ! ... Saving variables
 ! -------
@@ -326,6 +329,14 @@
 !*                                                                     *
 !***********************************************************************
 !
+#ifdef USE_TIMER
+            call CPU_Timing_Routine(start)
+#endif
+
+#ifdef USE_OMP
+!$OMP PARALLEL PRIVATE(PX, TX)
+!$OMP DO schedule(auto)
+#endif
       DO_InConSt: DO n = 1,NumElemTot
 !
          nloc = (n-1) * NumComPlus1
@@ -348,7 +359,7 @@
 ! -------------
 !
             IF (TX < 0.0d0) THEN
-               WRITE(*,6501) elem(n)%name, TX         ! Print a clarifying message about the error
+               WRITE(*,6501) elem%name(n), TX         ! Print a clarifying message about the error
                STOP                                   ! Stop the simulation
             END IF
 !
@@ -357,7 +368,7 @@
 ! -------------
 !
             IF ( PX < 0.0d0 .OR. PX > 5.0d8 ) THEN
-               WRITE(*,6502) elem(n)%name, PX         ! Print a clarifying message about the error
+               WRITE(*,6502) elem%name(n), PX         ! Print a clarifying message about the error
                STOP                                   ! Stop the simulation
             END IF
 !
@@ -376,12 +387,22 @@
 !
         CASE DEFAULT
 !
-           CALL Warning(elem(n)%name, XX, NumComPlus1, NumTimeSteps)
+           CALL Warning(elem%name(n), XX, NumComPlus1, NumTimeSteps)
 !
         END SELECT Case_State
 !
 !
       END DO DO_InConSt
+#ifdef USE_OMP
+!$OMP END DO
+!$OMP END PARALLEL
+#endif
+
+#ifdef USE_TIMER
+            call CPU_Timing_Routine(finish)
+
+            write (*,*) __FILE__, ":", __LINE__, " time: ", finish-start
+#endif
 !
 !
 !***********************************************************************
@@ -758,7 +779,7 @@
 !
       INTEGER(KIND = 2) :: nmat1, nmat2
 !
-      INTEGER :: n,nloc,m,np,k, mn
+      INTEGER :: n,nloc,m,np,k, mn,i
       INTEGER :: n1,n2,N1LOC,N2LOC,N1LOCP,N2LOCP,ISO
       INTEGER :: col, row
 !
@@ -770,6 +791,10 @@
 !
       LOGICAL :: First_call = .TRUE.
 !
+#ifdef USE_TIMER
+            real(KIND = 8) :: start, finish
+#endif
+
 ! -------
 ! ... Saving variables
 ! -------
@@ -793,27 +818,27 @@
 
 ! ...... Define elements of local arrays - ARRAY operations
 !
-         DistInv = 1.0d0/(conx(1:NumConx)%d1 + conx(1:NumConx)%d2)
+         DistInv = 1.0d0/(conx%d1(1:NumConx) + conx%d2(1:NumConx))
          DO n=1,NumConx
-            wt1(n)     = conx(n)%d2*DistInv(n)
+            wt1(n)     = conx%d2(n)*DistInv(n)
             wt2(n)     = 1.0d0 - wt1(n)
          END DO
-         AdjGrav = conx(1:NumConx)%beta*gravity
+         AdjGrav = conx%beta(1:NumConx)*gravity
 !
          IF(coordinate_system .EQ. 'CYL') THEN
 !
             DO n=1,NumConx
 !
-               n1 = conx(n)%n1
-               n2 = conx(n)%n2
+               n1 = conx%n1(n)
+               n2 = conx%n2(n)
 !
                IF(n1 == 0 .OR. n2 == 0)            CYCLE
                IF(n1 > NumElem .AND. n2 > NumElem) CYCLE
 !
-               IF(ABS(elem(n1)%coord(1) - elem(n2)%coord(1)) >= 1.0d-4 ) THEN
+               IF(ABS(elem%coord(n1,1) - elem%coord(n2,1)) >= 1.0d-4 ) THEN
 !
-                  wt1(n) = LOG( elem(n2)%coord(1) /(elem(n1)%coord(1) + conx(n)%d1)) / &
-                &          LOG( elem(n1)%coord(1) / (elem(n1)%coord(1) + noise) )
+                  wt1(n) = LOG( elem%coord(n2,1) / (elem%coord(n1,1) + conx%d1(n))) / &
+                &          LOG( elem%coord(n1,1) / (elem%coord(n1,1) + noise) )
                   wt2(n) = 1.0d0 - wt1(n)
 !
                END IF
@@ -844,8 +869,29 @@
 !
 ! ... Whole array operations
 !
-      phase_mass = 0.0d0
-      accum      = 0.0d0
+#ifdef USE_TIMER
+            call CPU_Timing_Routine(start)
+#endif
+
+#ifdef USE_OMP
+!$OMP SIMD
+#endif
+      DO n=1,NumPhases
+        phase_mass(n,1:NumEquPlus1) = 0.0d0
+      END DO
+
+#ifdef USE_OMP
+!$OMP SIMD
+#endif
+      DO n=1,NumEqu
+        accum(n,1:NumEquPlus1) = 0.0d0
+      END DO
+
+#ifdef USE_TIMER
+            call CPU_Timing_Routine(finish)
+
+            write (*,*) __FILE__, ":", __LINE__, " time: ", finish-start
+#endif
 !
 !
 !
@@ -867,7 +913,7 @@
          nloc = Loc(n)
 !
          IF(nonisothermal_conditions) THEN
-            mn   = elem(n)%MatNum
+            mn   = elem%MatNum(n)
             rock_heat_capacity = (1.0d0-ElemMedia(n,original)%porosity)*media(mn)%DensG*media(mn)%SpcHt
          END IF
 !
@@ -953,7 +999,7 @@
             END IF IF_BeginDt
 !
             IF(m == 1 .AND. Option_Print_JacobianInfo >= 3) THEN
-               WRITE(*,6005) elem(n)%name, (accum(k,m), k=1,NumEqu)
+               WRITE(*,6005) elem%name(n), (accum(k,m), k=1,NumEqu)
             END IF
 !
 ! <<<<<<
@@ -1046,7 +1092,22 @@
 !
 !
 !
-     FORALL (n=1:NumConx) ConxFlow(n)%CompInPhase(1:NumCom,1:NumMobPhases) = 0.0d0   ! ... Initialization - Whole array operation
+#ifdef USE_TIMER
+            call CPU_Timing_Routine(start)
+#endif
+
+#ifdef USE_OMP
+!$OMP SIMD
+#endif
+       DO n=1,NumConx
+          ConxFlow(n)%CompInPhase(1:NumCom,1:NumMobPhases) = 0.0d0   ! ... Initialization - Whole array operation
+       END DO
+
+#ifdef USE_TIMER
+            call CPU_Timing_Routine(finish)
+
+            write (*,*) __FILE__, ":", __LINE__, " time: ", finish-start
+#endif
 !
 !
 ! >>>>>>>>>>>>>>>>>>
@@ -1060,10 +1121,8 @@
 !
       DO_NumConX: DO n=1,NumConx
 !
-!
-!
-         n1 = conx(n)%n1
-         n2 = conx(n)%n2
+         n1 = conx%n1(n)
+         n2 = conx%n2(n)
 !
          IF(n1 == 0 .OR. n2 == 0)            CYCLE DO_NumConX
          IF(n1 > NumElem .AND. n2 > NumElem) CYCLE DO_NumConX
@@ -1078,40 +1137,55 @@
 !
 ! ...... Rock type/material and associated properties
 !
-         nmat1 = elem(n1)%MatNum
-         nmat2 = elem(n2)%MatNum
+         nmat1 = elem%MatNum(n1)
+         nmat2 = elem%MatNum(n2)
 !
 ! ----------
 ! ...... Basic connection parameters & quantities
 ! ----------
 !
-         D1 = conx(n)%d1
-         D2 = conx(n)%d2
+         D1 = conx%d1(n)
+         D2 = conx%d2(n)
 !
-         ISO = conx(n)%ki
-         FlowArea = conx(n)%area
+         ISO = conx%ki(n)
+         FlowArea = conx%area(n)
 !
 ! ...... Assign factors for flux terms
 !
          IF(n1 <= NumElem) THEN
-            FAC1 = TimeIncrement/elem(n1)%vol
+            FAC1 = TimeIncrement/elem%vol(n1)
          ELSE
             FAC1 = 0.0d0
          END IF
 !
          IF(n2 <= NumElem) THEN
-            FAC2 = TimeIncrement/elem(n2)%vol
+            FAC2 = TimeIncrement/elem%vol(n2)
          ELSE
             FAC2 = 0.0d0
          END IF
 !
-         IF(Option_Print_JacobianInfo >= 4) WRITE(*,6008) n, elem(n1)%name, elem(n2)%name, FAC1, FAC2
+         IF(Option_Print_JacobianInfo >= 4) WRITE(*,6008) n, elem%name(n1), elem%name(n2), FAC1, FAC2
 !
 ! ----------
 ! ...... Flow initialization - Whole array operation
 ! ----------
 !
-         Flow = 0.0d0
+#ifdef USE_TIMER
+            call CPU_Timing_Routine(start)
+#endif
+
+#ifdef USE_OMP
+!$OMP SIMD
+#endif
+         DO i=1,NumPerturb
+           Flow(i,1:NumPerturb) = 0.0d0
+         END DO
+
+#ifdef USE_TIMER
+            call CPU_Timing_Routine(finish)
+
+            write (*,*) __FILE__, ":", __LINE__, " time: ", finish-start
+#endif
 !
 !
 ! >>>>>>>>>>>>>>>>>>
@@ -1504,7 +1578,7 @@
       IF(Option_Print_JacobianInfo >= 2) THEN
          PRINT 6022
          DO n = 1,NumElem
-            PRINT 6024, elem(n)%name,(R((N-1)*NumEqu+K),K=1,NumEqu)
+            PRINT 6024, elem%name(n),(R((N-1)*NumEqu+K),K=1,NumEqu)
          END DO
          DO n = 1,Non0
             !PRINT 6824, n,RowNum(n),ColNum(n),CO(n)
@@ -1516,11 +1590,31 @@
 ! ... Compute residuals - CAREFUL: Whole array/subarray operations
 ! -------
 !
-      WHERE(ABS(old_accum(1:NumUnknowns)) > abs_convergence_crit)
-         rwork(1:NumUnknowns) = ABS(R(1:NumUnknowns)/old_accum(1:NumUnknowns))
-      ELSEWHERE
-         rwork(1:NumUnknowns) = ABS(R(1:NumUnknowns)/abs_convergence_crit)
-      END WHERE
+#ifdef USE_TIMER
+            call CPU_Timing_Routine(start)
+#endif
+
+#ifdef USE_OMP
+!$OMP PARALLEL
+!$OMP DO schedule(auto)
+#endif
+      DO i=1,NumUnknowns
+         IF (ABS(old_accum(i)) > abs_convergence_crit) THEN
+           rwork(i) = ABS(R(i)/old_accum(i))
+         ELSE
+           rwork(i) = ABS(R(i)/abs_convergence_crit)
+         END IF
+      END DO
+#ifdef USE_OMP
+!$OMP END DO
+!$OMP END PARALLEL
+#endif
+
+#ifdef USE_TIMER
+            call CPU_Timing_Routine(finish)
+
+            write (*,*) __FILE__, ":", __LINE__, " time: ", finish-start
+#endif
 !
 ! -------
 ! ... Determine maximum residual and its location in the 1-D array - Whole array/subarray operations

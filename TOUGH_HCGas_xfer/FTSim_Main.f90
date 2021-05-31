@@ -1231,7 +1231,7 @@
 ! -------
 !
       DO_NumEle: DO i=1,NumElemTot
-         WRITE(*,850) elem(i)%name,elem(i)%MatNum,elem(i)%vol
+         WRITE(*,850) elem%name(i),elem%MatNum(i),elem%vol(i)
       END DO DO_NumEle
 !
       WRITE(*,1000)
@@ -1243,7 +1243,7 @@
 ! -------
 !
       DO_NumConx: DO i=1,NumConx
-         WRITE(*,880) conx(i)%name1, conx(i)%name2, conx(i)%ki, conx(i)%d1, conx(i)%d2, conx(i)%area, conx(i)%beta
+         WRITE(*,880) conx%name1(i), conx%name2(i), conx%ki(i), conx%d1(i), conx%d2(i), conx%area(i), conx%beta(i)
       END DO DO_NumConx
 !
 ! -------
@@ -1279,7 +1279,7 @@
       WRITE(*,920)
 !
       DO_NumElem: DO i=1,NumElemTot
-         WRITE(*,930) elem(i)%name, ElemMedia(i,current)%porosity, (X((i-1)*NumComPlus1+j),j=1,NumComPlus1)
+         WRITE(*,930) elem%name(i), ElemMedia(i,current)%porosity, (X((i-1)*NumComPlus1+j),j=1,NumComPlus1)
       END DO DO_NumElem
 !
 ! -------

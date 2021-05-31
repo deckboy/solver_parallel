@@ -185,10 +185,7 @@
 ! ......... Initialize changes in the primary variables for this iteration
 ! ----------------
 !
-! Using OMP here breaks things
-!OMP WORKSHARE
             IF(NumNRIterations == 0) DX = 0.0d0  ! Whole array operation
-!OMP END WORKSHARE
 !
 ! ----------------
 ! ......... Update counters
@@ -250,7 +247,7 @@
 !
 ! ......... Print basic information for Option_Print_NRIterationInfo /= 0
 !
-               WRITE(*,6006) Tot_NumTimeSteps, NumNRIterations, TimeStep, MaxResidual, elem(MaxResElemNum)%name, MaxResEquNum
+               WRITE(*,6006) Tot_NumTimeSteps, NumNRIterations, TimeStep, MaxResidual, elem%name(MaxResElemNum), MaxResEquNum
             END IF
 !
 ! ----------------
@@ -267,7 +264,7 @@
 !
                NIT1 = (NIT-1)*NumComPlus1
 !
-               WRITE(*,6008) elem(nit)%name, DX(NIT1+1), DX(NIT1+2), ElemState%temp(nit,current), &
+               WRITE(*,6008) elem%name(nit), DX(NIT1+1), DX(NIT1+2), ElemState%temp(nit,current), &
      &                       ElemState%pres(nit,current), ElemProp(nit,0)%satur(1)
 !
             END IF IF_Option_Print_NRIterationInfo
@@ -602,7 +599,7 @@
       LOGICAL :: First_call = .TRUE.
 
 #ifdef USE_TIMER
-         real :: start, finish
+         real(KIND = 8) :: start, finish
 #endif
 !
 ! -------
@@ -650,32 +647,17 @@
 ! ... Update element pressures and temperatures
 ! ----------
 !
-#ifdef USE_TIMER
-         call cpu_time(start)
-#endif
-
-#ifdef USE_OMP
-!$OMP PARALLEL DO
-#endif
       DO n = 1,NumElem
          ElemState%pres(n, previous) = ElemState%pres(n, current)
          ElemState%temp(n, previous) = ElemState%temp(n, current)
       END DO
-#ifdef USE_OMP
-!$OMP END PARALLEL DO
-#endif
-
-#ifdef USE_TIMER
-         call cpu_time(finish)
-
-         write (*,*) __FILE__, ":", __LINE__, " time: ", finish-start
-#endif
 !
 ! ----------
 ! ... Update primary variables: CAREFUL! Array operations!
 ! ----------
 !
 ! This is the solution
+!
  1000 X = X + DX                   !!! <<<<<< Careful !
 !
 !
@@ -685,23 +667,7 @@
 !*                                                                     *
 !***********************************************************************
 !
-#ifdef USE_TIMER
-         call cpu_time(start)
-#endif
-
-#ifdef USE_OMP
-!$OMP WORKSHARE
-#endif
       ElemState%index(n, previous) = ElemState%index(n, current)   ! CAREFUL! Whole array operation
-#ifdef USE_OMP
-!$OMP END WORKSHARE
-#endif
-
-#ifdef USE_TIMER
-         call cpu_time(finish)
-
-         write (*,*) __FILE__, ":", __LINE__, " time: ", finish-start
-#endif
 !
 ! -------
 ! ... Udpate current time
@@ -799,14 +765,14 @@
 !
          IF_NST: IF(TrackElemNum /= 0) THEN
 !
-            WRITE(*,6002) elem(TrackElemNum)%name, Tot_NumTimeSteps, NumNRIterations, time,    &
+            WRITE(*,6002) elem%name(TrackElemNum), Tot_NumTimeSteps, NumNRIterations, time,    &
      &                    TimeStep, DX(NSTL+1), DX(NSTL+2),                                    &
      &                    ElemState%temp(TrackElemNum,0), ElemState%pres(TrackElemNum,0),    &
      &                    ElemProp(TrackElemNum,0)%satur(GasPhase)
 !
          ELSE
 !
-            WRITE(*,6002) elem(MaxResElemNum)%name, Tot_NumTimeSteps, NumNRIterations, time,                      &
+            WRITE(*,6002) elem%name(MaxResElemNum), Tot_NumTimeSteps, NumNRIterations, time,                      &
      &                    TimeStep,DX( (MaxResElemNum-1)*NumComPlus1+1 ),DX( (MaxResElemNum-1)*NumComPlus1+2 ),   &
      &                    ElemState%temp(MaxResElemNum,0), ElemState%pres(MaxResElemNum,0),                     &
      &                    ElemProp(MaxResElemNum,0)%satur(GasPhase)
@@ -1308,7 +1274,7 @@
 !
 !
 #ifdef USE_TIMER
-         real :: start, finish
+         real(KIND = 8) :: start, finish
 #endif
 !  =>=>=>=>=>=>=>=>=>=>=>=>=>=>=>=>=>=>=>  Main body of Solve_Jacobian_Matrix_Equation
 !
@@ -1449,6 +1415,10 @@
           &             CG_convergence_crit, Max_NumCGIterations, ITERU, ERR, IERR,         &
           &             LINEQ_UNIT, RWORK, real_work_array_size, IWORK, intg_work_array_size )
 !
+         ELSE IF (MatrixSolver == 4) THEN
+!
+            CALL LIS(N, R, work, Non0, RowNum, ColNum, CO)
+!
          END IF
 !
 ! ...... Retrieve information from work
@@ -1464,7 +1434,7 @@
          WRITE(*,6050)
 !
          DO_NumEle: DO nn=1,NumElem
-            WRITE(*,6055) elem(nn)%name,(R((nn-1)*NumEqu+k),k=1,NumEqu)
+            WRITE(*,6055) elem%name(nn),(R((nn-1)*NumEqu+k),k=1,NumEqu)
          END DO DO_NumEle
 !
       END IF IF_Option_Print_SolverInfo
@@ -1478,21 +1448,23 @@
 !
 !
 #ifdef USE_TIMER
-         call cpu_time(start)
+         call CPU_Timing_Routine(start)
 #endif
 
 #ifdef USE_OMP
-!$OMP WORKSHARE
+!$OMP PARALLEL
+!$OMP DO schedule(auto)
 #endif
-      FORALL (k=1:NumEqu)
+      DO k=1,NumEqu
          DX(k:N_k+k:NumComPlus1) = DX(k:N_k+k:NumComPlus1) + W_NRIteration * R(k:N_e+k:NumEqu)
-      END FORALL
+      END DO
 #ifdef USE_OMP
-!$OMP END WORKSHARE
+!$OMP END DO
+!$OMP END PARALLEL
 #endif
 
 #ifdef USE_TIMER
-         call cpu_time(finish)
+         call CPU_Timing_Routine(finish)
 
          write (*,*) __FILE__, ":", __LINE__, " time: ", finish-start
 #endif
@@ -1615,7 +1587,7 @@
       LOGICAL :: First_call = .TRUE.
 !
 #ifdef USE_TIMER
-         real :: start, finish
+      real(KIND = 8) :: start, finish
 #endif
 ! -------
 ! ... Saving variables
@@ -1639,17 +1611,24 @@
 !*                                                                     *
 !***********************************************************************
 !
+      info           = 0
 #ifdef USE_TIMER
-         call cpu_time(start)
+            call CPU_Timing_Routine(start)
 #endif
 
 #ifdef USE_OMP
-!$OMP WORKSHARE
+!$OMP SIMD
 #endif
-      info           = 0
-      iwork(1:N)     = 0                                    !  CAREFUL! Whole array operation
-!
-      AB(1:LDAB,1:N) = 0.0d0                                !  CAREFUL! Whole array operation
+      DO i=1,N
+         iwork(i)     = 0                                    !  CAREFUL! Whole array operation
+         AB(1:LDAB,i) = 0.0d0                                !  CAREFUL! Whole array operation
+      END DO
+
+#ifdef USE_TIMER
+            call CPU_Timing_Routine(finish)
+
+            write (*,*) __FILE__, ":", __LINE__, " time: ", finish-start
+#endif
 !
 !***********************************************************************
 !*                                                                     *
@@ -1660,15 +1639,6 @@
       FORALL (i=1:NZx)
          AB(KL+KU+1+RowNum(i)-ColNum(i),ColNum(i)) = co(i)  ! CAREFUL! Whole array operation
       END FORALL
-#ifdef USE_OMP
-!$OMP END WORKSHARE
-#endif
-
-#ifdef USE_TIMER
-         call cpu_time(finish)
-
-         write (*,*) __FILE__, ":", __LINE__, " time: ", finish-start
-#endif
 !
       IF(Option_Print_SolverInfo /= 0) CALL CPU_Elapsed_Time(0,TS,TT)
 !
@@ -1817,7 +1787,7 @@
 ! ......... Print parameters at state point
 ! -------------
 !
-         WRITE(*,6002)  elem(n)%name,   &
+         WRITE(*,6002)  elem%name(n),   &
      &                 (ElemProp(n,0)%satur(i),                                   &
      &                  ElemProp(n,0)%density(i),                                 &
      &                  ElemProp(n,0)%enthalpy(i),                                &
@@ -2000,7 +1970,7 @@
             n2 = ElemState%Index(n,current)
 !
 ! ...Original code written to SAVE file - delete after new code works!
-    !           WRITE(SAVE_Unit,6004)  elem(n)%name, ElemMedia(n,current)%porosity, State_name(n2), EOS_variables(n2), &
+    !           WRITE(SAVE_Unit,6004)  elem%name(n), ElemMedia(n,current)%porosity, State_name(n2), EOS_variables(n2), &
     ! &                               (X((n-1)*NumComPlus1+i),i=1,NumComPlus1)
 !
 ! ...Write namelist data to SAVE file
@@ -2190,7 +2160,7 @@
 !
          j = SS(n)%ElemNum
          IF(j == 0 .OR. j > NumElem) GO TO 1100
-         FAC = TimeIncrement/elem(j)%vol
+         FAC = TimeIncrement/elem%vol(j)
 !
          JLOC  = (j-1)*NumEqu
          JLOCP = (j-1)*NumComPlus1
@@ -2405,7 +2375,7 @@
 !
       INTEGER, INTENT(IN) :: n,j
 !
-      INTEGER :: ic,m,np
+      INTEGER :: ic,m,np,i
 !
 ! -------
 ! ... Logical variables
@@ -2414,7 +2384,7 @@
       LOGICAL :: First_call = .TRUE.
 !
 #ifdef USE_TIMER
-         real :: start, finish
+      real(KIND = 8) :: start, finish
 #endif
 ! -------
 ! ... Saving variables
@@ -2452,34 +2422,29 @@
 !
 !
 !
+#ifdef USE_TIMER
+         call CPU_Timing_Routine(start)
+#endif
+
+#ifdef USE_OMP
+!$OMP PARALLEL PRIVATE (FFS)
+!$OMP DO schedule(auto)
+#endif
       DO_Neq1: DO m=1,NumEquPlus1
-!
 ! ----------
 ! ...... Initialize the block Q_contr(j,j)
 ! ----------
-#ifdef USE_TIMER
-         call cpu_time(start)
-#endif
-
 #ifdef USE_OMP
-!$OMP WORKSHARE
+!$OMP SIMD
 #endif
-         Q_contr(1:NumComPlus1,m) = 0.0d0   ! CAREFUL - Whole array operation
+         DO i=1,NumComPlus1
+            Q_contr(i,m) = 0.0d0   ! CAREFUL - Whole array operation
+         END DO
 ! ----------
 ! ...... Initialization
 ! ----------
-!
          FFS        = 0.0d0                 ! = SUM(mobility*density) in all phases
          SS(n)%enth = 0.0d0                 ! Flow enthalpy
-#ifdef USE_OMP
-!$OMP END WORKSHARE
-#endif
-
-#ifdef USE_TIMER
-         call cpu_time(finish)
-
-         write (*,*) __FILE__, ":", __LINE__, " time: ", finish-start
-#endif
 !
 !
 !***********************************************************************
@@ -2488,38 +2453,30 @@
 !*                                                                     *
 !***********************************************************************
 !
-!
          DO_NumPhase1: DO np=1,NumMobPhases
 !
             SS(n)%PhaseFracFlow(np) = 0.0d0   ! Initialization of fractional flows
 !
             IF(ic == 1 .AND. ElemProp(j,m-1)%viscosity(np) /= 0.0d0) THEN
-!
                SS(n)%PhaseFracFlow(np) = ElemProp(j,m-1)%RelPerm(np) * ElemProp(j,m-1)%density(np)   &
      &                                  /ElemProp(j,m-1)%viscosity(np)
             END IF
-!
 !
             IF(ic == 2) THEN
                SS(n)%PhaseFracFlow(np) = ElemProp(j,m-1)%satur(np) * ElemProp(j,m-1)%density(np)
             END IF
 !
-!x
 ! -------------
 ! ......... Adjsust the sum in FFS
 ! -------------
-!
             FFS = FFS + SS(n)%PhaseFracFlow(np)
 !
 ! -------------
 ! ......... For Option_Print_SourceSinkInfo >= 5, print info
 ! -------------
-!
             IF(Option_Print_SourceSinkInfo >= 5) WRITE(*,6002) m, np, ElemProp(j,m-1)%RelPerm(np), ElemProp(j,m-1)%viscosity(np),   &
      &                                           ElemProp(j,m-1)%density(np), SS(n)%PhaseFracFlow(np), FFS
-!
          END DO DO_NumPhase1
-!
 !
 !***********************************************************************
 !*                                                                     *
@@ -2528,27 +2485,28 @@
 !*                                                                     *
 !***********************************************************************
 !
-!
          DO_NumPhase2: DO np=1,NumMobPhases
 !
 ! ......... Normalization of fractional flows
-!
             IF(FFS /= 0.0d0) SS(n)%PhaseFracFlow(np) = SS(n)%PhaseFracFlow(np)/FFS
 !
 ! ......... Contribution of components to phase enthalpy
-!
             SS(n)%enth =  SS(n)%enth + SS(n)%PhaseFracFlow(np) * ElemProp(j,m-1)%enthalpy(np)
 !
 ! ......... Adjustment of the Jacobian submatrices:  CAREFUL! Whole array operation
-!
-            Q_contr(1:NumCom , m) = Q_contr(1:NumCom , m) - FAC*GN*SS(n)%PhaseFracFlow(np) * ElemProp(j,m-1)%MassFrac(1:NumCom,np)
+#ifdef USE_OMP
+! Probably won't do anything unless advanced gather instructions available
+!$OMP SIMD
+#endif
+            DO i=1,NumCom
+               Q_contr(i, m) = Q_contr(i, m) - FAC*GN*SS(n)%PhaseFracFlow(np) * ElemProp(j,m-1)%MassFrac(i,np)
+            END DO
 !
          END DO DO_NumPhase2
 !
 ! ----------
 ! ...... Adjust the heat-related Jacobian submatrices
 ! ----------
-!
          Q_contr(NumComPlus1,m) = Q_contr(NumComPlus1,m) - FAC*GN*SS(n)%enth
 !
 ! <<<
@@ -2556,6 +2514,16 @@
 ! <<<
 !
       END DO DO_Neq1
+#ifdef USE_OMP
+!$OMP END DO
+!$OMP END PARALLEL
+#endif
+
+#ifdef USE_TIMER
+         call CPU_Timing_Routine(finish)
+
+         write (*,*) __FILE__, ":", __LINE__, " time: ", finish-start
+#endif
 !
 !
 !***********************************************************************

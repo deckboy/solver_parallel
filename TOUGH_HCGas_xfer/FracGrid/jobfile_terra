@@ -1,0 +1,20 @@
+#!/bin/sh
+#PBS -l walltime=00:10:00
+#PBS -N TOUGHPlus
+#PBS -l nodes=1:ppn=16
+module load intel
+
+#export USE_CPP=1
+#export USE_TIMER=1
+#export USE_OMP=1
+
+#cd ../
+#make clean
+#make
+#cd FracGrid
+
+export OMP_NUM_THREADS=4; ./../FTSim.exe < Test_B2 > 4.out
+rm ALLOC GENER INCON SAVE VERS Plot_* LINEQ
+
+
+
